@@ -181,7 +181,11 @@ end
 
 -- set the quest frame's text
 function qw.SetQuestsFrameText()
-    qw.QuestsFrame:SetText("Qst: " .. qw.TotalQuestsWatched .. " (" .. qw.TotalCompletedQuests .. " completed)");
+    if (qw.TotalCompletedQuests > 0) then
+        qw.QuestsFrame:SetText("Qst: " .. qw.TotalQuestsWatched .. " (" .. qw.TotalCompletedQuests .. " completed)");
+    else
+        qw.QuestsFrame:SetText("Qst: " .. qw.TotalQuestsWatched);
+    end
 end
 
 -- set the player's current location
@@ -350,11 +354,3 @@ function qw.OnEventHandler(self, event, ...)
 
     qw.SetQuestsFrameText();
 end
-
-
-
-
-
-
-
-
