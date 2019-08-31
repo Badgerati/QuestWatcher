@@ -4,18 +4,16 @@ QuestWatcherAddon = {
     CurrentAreaID = 0,
     TotalQuestsWatched = 0,
     TotalCompletedQuests = 0,
-    TotalAccumedXP = 0,
     FontPath = "Fonts\\FRIZQT__.TTF",
     FontSize = 12
 };
 
 local qw = QuestWatcherAddon;
 
--- create the addon UI frame (current location, number quests, and total xp from completed quests)
+-- create the addon UI frame (current location, number quests, and completed quests)
 qw.ParentFrame = CreateFrame("Frame", nil, UIParent);
 qw.LocationFrame = CreateFrame("Frame", nil, qw.ParentFrame);
 qw.QuestsFrame = CreateFrame("Frame", nil, qw.ParentFrame);
-qw.CompletedFrame = CreateFrame("Frame", nil, qw.ParentFrame);
 
 -- events to register when the addon is loaded
 function qw.OnLoadEvents(self)
@@ -28,7 +26,6 @@ function qw.OnLoadEvents(self)
     qw.InitParentFrame();
     qw.InitLocationFrame();
     qw.InitQuestFrame();
-    qw.InitCompletedFrame();
 
     -- register slash commands
     SLASH_QUESTWATCHER1 = '/questwatcher';
@@ -72,7 +69,7 @@ function qw.QuestWatcher_SlashHandler(msg, editbox)
         end
 
         for index = 1, #_completed do
-            print("> " .. _completed[index].Name .. " [completed - " .. _completed[index].XP ..  "xp]");
+            print("> " .. _completed[index].Name .. " [completed]");
         end
     end
 
@@ -144,21 +141,6 @@ function qw.InitQuestFrame()
     qw.QuestsFrame:SetText("0")
 end
 
--- initialise the completed UI frame
-function qw.InitCompletedFrame()
-    qw.CompletedFrame:SetWidth(300)
-    qw.CompletedFrame:SetHeight(26)
-    qw.CompletedFrame:SetPoint("TOPLEFT", 0, -54)
-    qw.CompletedFrame:Show()
-
-    --set it's font
-    qw.CompletedFrame = qw.CompletedFrame:CreateFontString("CompletedFrameText", "OVERLAY", "GameTooltipText")
-    qw.CompletedFrame:SetAllPoints()
-    CompletedFrameText:SetFont(qw.FontPath, qw.FontSize, "OUTLINE")
-    qw.CompletedFrame:Show()
-    qw.CompletedFrame:SetText("0")
-end
-
 -- get the current area's ID
 function qw.GetAreaID()
     return C_Map.GetBestMapForUnit("player");
@@ -166,12 +148,30 @@ end
 
 -- get required area name, given an areaId
 function qw.GetAreaName(areaId)
-    return C_Map.GetMapInfo(areaId).name;
+    if (areaId == nil) then
+        areaId = qw.CurrentAreaID;
+    end
+
+    local info = C_Map.GetMapInfo(areaId)
+    if (info == nil) then
+        return "";
+    end
+
+    return info.name;
 end
 
 -- is the player on a contintent?
-function qw.IsPlayerOnContinent()
-    return (C_Map.GetMapInfo(qw.CurrentAreaID).type == "Continent");
+function qw.IsPlayerOnContinent(areaId)
+    if (areaId == nil) then
+        areaId = qw.CurrentAreaID;
+    end
+
+    local info = C_Map.GetMapInfo(areaId)
+    if (info == nil) then
+        return false;
+    end
+
+    return (info.type == "Continent");
 end
 
 -- set the location frame's text
@@ -181,12 +181,7 @@ end
 
 -- set the quest frame's text
 function qw.SetQuestsFrameText()
-    qw.QuestsFrame:SetText("Qst: " .. qw.TotalQuestsWatched);
-end
-
--- set the completed frame's text
-function qw.SetCompletedFrameText()
-    qw.CompletedFrame:SetText("Cpt: " .. qw.TotalCompletedQuests);
+    qw.QuestsFrame:SetText("Qst: " .. qw.TotalQuestsWatched .. " (" .. qw.TotalCompletedQuests .. " completed)");
 end
 
 -- set the player's current location
@@ -236,8 +231,7 @@ function qw.GetCurrentAreaQuests()
                     SelectQuestLogEntry(index);
                     quests.Completed[completedIndex] = {
                         Name = questTitle,
-                        Index = index,
-                        XP = GetQuestLogRewardXP()
+                        Index = index
                     }
                     completedIndex = completedIndex + 1;
 
@@ -286,10 +280,12 @@ function qw.OnEventHandler(self, event, ...)
     local _totalCompletedQuests = 0;
     local _questMsg = true;
     local _completedMsg = true;
-    local _accumXP = 0;
 
     -- get the player's current area location
     local _areaChanged = qw.SetPlayerCurrentLocation();
+    if (_areaChanged == nil) then
+        return true;
+    end
 
     -- has the player entered a new area? if so, make this their CurrentLocation
     if (_areaChanged) then
@@ -297,7 +293,7 @@ function qw.OnEventHandler(self, event, ...)
         print("Location: " .. qw.CurrentLocation .. " (" .. qw.CurrentAreaID .. ")");
 
         -- set the location frame
-        if (not qw.IsPlayerOnContinent()) then
+        if (not qw.IsPlayerOnContinent(nil)) then
             qw.SetLocationFrameText();
         end
     else
@@ -306,8 +302,8 @@ function qw.OnEventHandler(self, event, ...)
     end
 
     -- if the player has entered a new Continent, then don't scan for quests (as there aren't any...)
-    if (qw.IsPlayerOnContinent()) then
-        return true
+    if (qw.IsPlayerOnContinent(nil)) then
+        return true;
     end
 
     -- unwatch all quests
@@ -321,14 +317,8 @@ function qw.OnEventHandler(self, event, ...)
         AddQuestWatch(_quests.InProgress[index].Index);
     end
 
-    -- get total xp from completed quetsts
-    for index = 1, #_quests.Completed do
-        _accumXP = _accumXP + _quests.Completed.XP;
-    end
-
     qw.TotalQuestsWatched = _quests.Counts.InProgress;
     qw.TotalCompletedQuests = _quests.Counts.Completed;
-    qw.TotalAccumedXP = _accumXP;
 
     -- tell the user how many quests are currently being watched
     if (_questMsg) then
@@ -344,21 +334,13 @@ function qw.OnEventHandler(self, event, ...)
         end
     end
 
-    qw.SetQuestsFrameText();
-
-    -- announce how much XP the player can make from handing in completed quests in this area
+    -- how many quests are completed?
     if (_completedMsg) then
-        local accumMsg = _accumXP .. "xp from ";
-        
-        if (UnitLevel("player") == 90) then
-            accumMsg = "";
-        end
-    
         if (qw.TotalCompletedQuests == 1) then
-            RaidNotice_AddMessage(RaidWarningFrame, "With " .. accumMsg .. qw.TotalCompletedQuests .. " completed quest.", ChatTypeInfo["RAID_WARNING"])
+            RaidNotice_AddMessage(RaidWarningFrame, "With " .. qw.TotalCompletedQuests .. " completed quest.", ChatTypeInfo["RAID_WARNING"])
         else
             if (qw.TotalCompletedQuests > 1) then
-                RaidNotice_AddMessage(RaidWarningFrame, "With " .. accumMsg .. qw.TotalCompletedQuests .. " completed quests.", ChatTypeInfo["RAID_WARNING"])
+                RaidNotice_AddMessage(RaidWarningFrame, "With " .. qw.TotalCompletedQuests .. " completed quests.", ChatTypeInfo["RAID_WARNING"])
                 
             else
                 RaidNotice_AddMessage(RaidWarningFrame, "With no completed quests in this area.", ChatTypeInfo["RAID_WARNING"])
@@ -366,7 +348,7 @@ function qw.OnEventHandler(self, event, ...)
         end
     end
 
-    qw.SetCompletedFrameText();
+    qw.SetQuestsFrameText();
 end
 
 
