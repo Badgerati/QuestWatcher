@@ -1,0 +1,10 @@
+## Interface: 80200
+## Title: QuestWatcher
+## Author: Badgerati
+## Notes: QuestWatcher helps you keep automatically watch quests in each area/dungeon/battleground and more.
+## Version: 1.0.0
+## SavedVariables: QuestWatcherDB
+## X-Compatible-With: 11302
+
+QuestWatcher.lua
+QuestWatcher.xml

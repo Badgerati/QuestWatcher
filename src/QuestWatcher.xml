@@ -1,0 +1,22 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/..\..\FrameXML\UI.xsd">
+
+   <Frame name="QuestWatcherAddon_Frame" parent="UIParent" hidden="false" movable="true" enableMouse="true" clampedToScreen="true">
+      <Scripts>
+         <OnLoad>
+            self:SetUserPlaced(1)
+            QuestWatcherAddon.OnLoadEvents(self)
+            self:RegisterForDrag("LeftButton")
+         </OnLoad>
+         <OnEvent>
+            QuestWatcherAddon:OnEventHandler(self, event, ...)
+         </OnEvent>
+         <OnDragStart>
+            self:StartMoving()
+         </OnDragStart>
+         <OnDragStop>
+            self:StopMovingOrSizing()
+         </OnDragStop>
+      </Scripts>
+   </Frame>
+
+</Ui>
